@@ -33,7 +33,7 @@ jobs:
         run: env -u GITHUB_ACTIONS yarn build:prod
       - name: Publish release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
         run: |
           version=$(node -p "require('./app/package.json').version")
           sha=${GITHUB_SHA::7}
