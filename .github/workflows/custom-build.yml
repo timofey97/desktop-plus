@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - custom
+    paths-ignore:
+      - 'custom/**'
   workflow_dispatch:
 
 permissions:
