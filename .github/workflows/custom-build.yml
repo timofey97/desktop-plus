@@ -1,0 +1,46 @@
+name: Build custom app
+
+on:
+  push:
+    branches:
+      - custom
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: custom-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - id: node
+        run: echo "version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/setup-ci-environment
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+          arch: arm64
+      - name: Build production app
+        run: env -u GITHUB_ACTIONS yarn build:prod
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./app/package.json').version")
+          sha=${GITHUB_SHA::7}
+          zip="Desktop-Plus-$version-custom-arm64.zip"
+          ditto -c -k --keepParent "dist/Desktop Plus-darwin-arm64/Desktop Plus.app" "$zip"
+          gh release create "custom-$version-$sha" "$zip" \
+            --target "$GITHUB_SHA" \
+            --title "Desktop Plus $version custom ($sha)" \
+            --notes "Built from \`custom\` at $GITHUB_SHA." \
+            --latest
+          gh release list --limit 100 --json tagName --jq '.[3:][].tagName' |
+            while read -r old; do gh release delete "$old" --cleanup-tag --yes; done

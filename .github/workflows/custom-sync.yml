@@ -1,0 +1,39 @@
+name: Merge upstream release
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: custom-sync
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: custom
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+      - name: Merge the latest upstream release into custom
+        run: |
+          git remote add upstream https://github.com/desktop-plus/desktop-plus.git
+          git fetch --quiet upstream --tags
+          tag=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+(\.[0-9]+)+$' | head -1)
+          if git merge-base --is-ancestor "$tag" HEAD; then
+            echo "custom already contains $tag"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git merge --no-edit "$tag"; then
+            echo "::error::Merging $tag into custom conflicts in: $(git diff --name-only --diff-filter=U | tr '\n' ' ')"
+            exit 1
+          fi
+          git push origin custom
+          echo "::notice::Merged $tag into custom"
