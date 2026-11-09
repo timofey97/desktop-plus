@@ -62,6 +62,8 @@ interface IAppearanceProps {
   ) => void
   readonly titleBarStyle: TitleBarStyle
   readonly onTitleBarStyleChanged: (titleBarStyle: TitleBarStyle) => void
+  readonly showChangedFileCount: boolean
+  readonly onShowChangedFileCountChange: (show: boolean) => void
   readonly showWorktrees: boolean
   readonly onShowWorktreesChanged: (show: boolean) => void
   readonly showWorktreesInRepoList: boolean
@@ -102,6 +104,7 @@ interface IAppearanceState {
   readonly availableDiffFontFamilies: ReadonlyArray<DiffFontFamily>
   readonly titleBarStyle: TitleBarStyle
   readonly recentRepositoriesCount: number
+  readonly showChangedFileCount: boolean
   readonly showWorktrees: boolean
   readonly showWorktreesInRepoList: boolean
   readonly showCompareTab: boolean
@@ -141,6 +144,7 @@ export class Appearance extends React.Component<
           : [props.selectedDiffFontFamily, defaultDiffFontFamily],
       titleBarStyle: props.titleBarStyle,
       recentRepositoriesCount: props.recentRepositoriesCount,
+      showChangedFileCount: props.showChangedFileCount,
       showWorktrees: props.showWorktrees,
       showWorktreesInRepoList: props.showWorktreesInRepoList,
       showCompareTab: props.showCompareTab,
@@ -222,6 +226,14 @@ export class Appearance extends React.Component<
     const count = parseInt(event.currentTarget.value, 10)
     this.setState({ recentRepositoriesCount: count })
     this.props.onRecentRepositoriesCountChanged(count)
+  }
+
+  private onShowChangedFileCountChange = (
+    event: React.FormEvent<HTMLInputElement>
+  ) => {
+    const show = event.currentTarget.checked
+    this.setState({ showChangedFileCount: show })
+    this.props.onShowChangedFileCountChange(show)
   }
 
   private onShowWorktreesChanged = (
@@ -501,7 +513,7 @@ export class Appearance extends React.Component<
 
     return (
       <div className="advanced-section">
-        <h2 id="repository-list-heading">{'Repository list'}</h2>
+        <h2 id="repository-list-heading">Repository list</h2>
 
         <Select
           label="Number of recent repositories to show"
@@ -559,6 +571,15 @@ export class Appearance extends React.Component<
             Tree guide lines
           </option>
         </Select>
+        <Checkbox
+          label="Show changed file count in repository list indicators"
+          value={
+            this.state.showChangedFileCount
+              ? CheckboxValue.On
+              : CheckboxValue.Off
+          }
+          onChange={this.onShowChangedFileCountChange}
+        />
       </div>
     )
   }

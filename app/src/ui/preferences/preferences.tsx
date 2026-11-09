@@ -139,6 +139,7 @@ interface IPreferencesProps {
   readonly copilotAppPath: string | null
   readonly branchPresetScript: ICustomIntegration | null
   readonly titleBarStyle: TitleBarStyle
+  readonly showChangedFileCount: boolean
   readonly showWorktrees: boolean
   readonly showWorktreesInRepoList: boolean
   readonly showCompareTab: boolean
@@ -201,6 +202,7 @@ interface IPreferencesState {
   readonly availableShells: ReadonlyArray<Shell>
   readonly selectedShell: Shell
   readonly titleBarStyle: TitleBarStyle
+  readonly showChangedFileCount: boolean
   readonly recentRepositoriesCount: number
   readonly showWorktrees: boolean
   readonly showWorktreesInRepoList: boolean
@@ -308,6 +310,7 @@ export class Preferences extends React.Component<
       availableShells: [],
       selectedShell: this.props.selectedShell,
       titleBarStyle: this.props.titleBarStyle,
+      showChangedFileCount: this.props.showChangedFileCount,
       recentRepositoriesCount: this.props.recentRepositoriesCount,
       showWorktrees: this.props.showWorktrees,
       showWorktreesInRepoList: this.props.showWorktreesInRepoList,
@@ -797,6 +800,8 @@ export class Preferences extends React.Component<
             onAlwaysShowWorktreeListChanged={
               this.onAlwaysShowWorktreeListChanged
             }
+            showChangedFileCount={this.state.showChangedFileCount}
+            onShowChangedFileCountChange={this.onShowChangedFileCountChange}
             recentRepositoriesCount={this.state.recentRepositoriesCount}
             onRecentRepositoriesCountChanged={
               this.onRecentRepositoriesCountChanged
@@ -1252,6 +1257,10 @@ export class Preferences extends React.Component<
     this.setState({ titleBarStyle })
   }
 
+  private onShowChangedFileCountChange = (showChangedFileCount: boolean) => {
+    this.setState({ showChangedFileCount })
+  }
+
   private onRecentRepositoriesCountChanged = (
     recentRepositoriesCount: number
   ) => {
@@ -1365,6 +1374,10 @@ export class Preferences extends React.Component<
         dispatcher.setRepositoryIndicatorsEnabled(
           this.state.repositoryIndicatorsEnabled
         )
+      }
+
+      if (this.state.showChangedFileCount !== this.props.showChangedFileCount) {
+        dispatcher.setShowChangedFileCount(this.state.showChangedFileCount)
       }
 
       if (

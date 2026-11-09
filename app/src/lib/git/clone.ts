@@ -71,7 +71,6 @@ export async function clone(
   url: string,
   path: string,
   options: CloneOptions,
-  login: string | null,
   progressCallback?: (progress: ICloneProgress) => void
 ): Promise<void> {
   const unsupportedProtocol = unsupportedCloneProtocols.find(protocol =>
@@ -99,13 +98,6 @@ export async function clone(
       .join(':'),
   }
 
-  const remoteUrl = login
-    ? url.replace(
-        /^((?:https|http|git+ssh|git|ssh|file)?:\/\/)/i,
-        '$1' + login + '@'
-      )
-    : url
-
   const defaultBranch = options.defaultBranch ?? (await getDefaultBranch())
 
   const args = [
@@ -120,7 +112,10 @@ export async function clone(
     '--recursive',
   ]
 
-  let opts: IGitStringExecutionOptions = { env }
+  let opts: IGitStringExecutionOptions = {
+    env,
+    fallbackAccount: options.fallbackAccount,
+  }
 
   if (progressCallback) {
     args.push('--progress')
@@ -148,7 +143,7 @@ export async function clone(
     args.push('-b', options.branch)
   }
 
-  args.push('--', remoteUrl, path)
+  args.push('--', url, path)
 
   await git(args, __dirname, 'clone', opts)
 }

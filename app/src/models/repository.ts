@@ -10,14 +10,8 @@ import {
 import { UpdateBranchStrategy } from '../lib/update-branch-strategy'
 import { assertNever, fatalError } from '../lib/fatal-error'
 import { createEqualityHash } from './equality-hash'
-import { memoizedGetRemotesFromPath } from '../lib/git'
-import { findDefaultRemote } from '../lib/stores/helpers/find-default-remote'
 import { EditorOverride } from './editor-override'
-import { remoteUrlToWebUrl } from '../lib/remote-parsing'
-
-export enum LoginSpecialValue {
-  ForceNullLogin = 1,
-}
+import { IAccountIdentity } from './account'
 
 function getBaseName(path: string): string {
   const baseName = Path.basename(path)
@@ -43,11 +37,6 @@ export class Repository {
   public hash: string
 
   /**
-   * The URL of the default remote of the repository.
-   */
-  private _url: string | null = null
-
-  /**
    * @param path The working directory of this repository
    * @param missing Was the repository missing on disk last we checked?
    */
@@ -67,7 +56,6 @@ export class Repository {
      * which introduces new users to some core concepts of Git and GitHub.
      */
     public readonly isTutorialRepository: boolean = false,
-    public readonly overrideLogin: string | LoginSpecialValue | null = null,
     /**
      * The path to the .git directory for this repository, or undefined if it
      * hasn't been resolved yet (e.g. for repositories added before this
@@ -84,7 +72,9 @@ export class Repository {
      * it, so the worktree set is not always discoverable after the fact. This
      * records the main worktree while it is still known.
      */
-    public readonly mainWorktreePath: string | undefined = undefined
+    public readonly mainWorktreePath: string | undefined = undefined,
+    /** The explicitly assigned account login, or null if no account is assigned. */
+    public readonly login: string | null = null
   ) {
     this.name = (gitHubRepository && gitHubRepository.name) || getBaseName(path)
 
@@ -100,7 +90,7 @@ export class Repository {
       this.workflowPreferences.forkContributionTarget,
       this.workflowPreferences.updateBranchStrategy,
       this.isTutorialRepository,
-      this.overrideLogin
+      this.login
     )
   }
 
@@ -113,36 +103,21 @@ export class Repository {
   public get resolvedGitDir(): string {
     return this.gitDir ?? Path.join(this.path, '.git')
   }
+}
 
-  public get url(): string | null {
-    // Resolve the default remote URL if not yet done.
-    if (this._url === null) {
-      this.fetchUrl()
-    }
-
-    return this._url
-  }
-
-  private fetchUrl(): void {
-    // Get the URL of the default remote, if it exists.
-    memoizedGetRemotesFromPath(this.path).then(remotes => {
-      const defaultRemote = findDefaultRemote(remotes)
-      if (defaultRemote) {
-        this._url = defaultRemote.url
-      }
-    })
-  }
-
-  public get login(): string | null {
-    if (this.overrideLogin != null) {
-      return this.overrideLogin &&
-        this.overrideLogin !== LoginSpecialValue.ForceNullLogin
-        ? this.overrideLogin
-        : null
-    } else {
-      return this.gitHubRepository?.login ?? null
-    }
-  }
+/**
+ * A key identifying the working directory a repository refers to.
+ *
+ * Unlike `hash`, the key doesn't change when the repository's account,
+ * GitHub repository or other metadata changes, so in-memory state and
+ * in-flight operations survive those changes. Worktrees share a repository id,
+ * so the path is part of the key. Repositories that haven't been persisted
+ * (id -1) fall back to the hash so unrelated placeholders don't share state.
+ */
+export function getRepositoryStateKey(repository: Repository): string {
+  return repository.id < 0
+    ? `hash:${repository.hash}`
+    : `${repository.id}:${repository.path}`
 }
 
 /** Identical to `Repository`, except it **must** have a `gitHubRepository` */
@@ -183,6 +158,19 @@ export function assertIsRepositoryWithGitHubRepository(
 }
 
 /**
+ * Get the identity of the account assigned to the repository, or null when
+ * the repository isn't a GitHub repository or has no assigned account.
+ */
+export function getRepositoryAccountIdentity(
+  repository: Repository
+): IAccountIdentity | null {
+  const { gitHubRepository, login } = repository
+  return gitHubRepository === null || login === null
+    ? null
+    : { endpoint: gitHubRepository.endpoint, login }
+}
+
+/**
  * Returns whether the passed repository is a GitHub fork.
  *
  * This function narrows down the type of the passed repository to
@@ -195,15 +183,6 @@ export function isRepositoryWithForkedGitHubRepository(
     isRepositoryWithGitHubRepository(repository) &&
     repository.gitHubRepository.parent !== null
   )
-}
-
-/**
- * Returns whether the passed repository has a default remote URL set.
- *
- * This function does not check the validity of the URL.
- */
-export function hasDefaultRemoteUrl(repository: Repository): boolean {
-  return (getGitHubHtmlUrl(repository) ?? getNonGitHubUrl(repository)) !== null
 }
 
 /**
@@ -256,24 +235,6 @@ export function getGitHubHtmlUrl(repository: Repository): string | null {
   }
 
   return getNonForkGitHubRepository(repository).htmlURL
-}
-
-/**
- * Get the html URL for a non-GitHub repository, if it has one.
- * Will return the origin repository's URL if it has one and the URL is trusted.
- * Otherwise, returns null.
- */
-export function getNonGitHubUrl(repository: Repository): string | null {
-  // Usually, this method will not be called for GitHub repositories, but better be safe than sorry.
-  if (isRepositoryWithGitHubRepository(repository)) {
-    return null
-  }
-
-  if (!repository.url) {
-    return null
-  }
-
-  return remoteUrlToWebUrl(repository.url)
 }
 
 /**

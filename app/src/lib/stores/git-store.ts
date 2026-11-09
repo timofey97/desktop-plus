@@ -177,14 +177,33 @@ export class GitStore extends BaseStore {
 
   private _stashEntryCount = 0
 
+  private _repository: Repository
+
   public constructor(
-    private readonly repository: Repository,
+    repository: Repository,
     private readonly shell: IAppShell,
     private readonly statsStore: IStatsStore
   ) {
     super()
 
+    this._repository = repository
     this._tagsToPush = getTagsToPush(repository)
+  }
+
+  /** The current repository this store operates on. */
+  public get repository(): Repository {
+    return this._repository
+  }
+
+  /**
+   * Adopt a newer snapshot of the same working directory.
+   *
+   * The account, GitHub repository and other metadata of a repository can
+   * change while the store is in use. Subsequent operations use the new
+   * snapshot, so they resolve credentials for the current account.
+   */
+  public setRepository(repository: Repository) {
+    this._repository = repository
   }
 
   /**
@@ -1296,15 +1315,6 @@ export class GitStore extends BaseStore {
     this.emitUpdate()
 
     return status
-  }
-
-  public async loadStatusLight(): Promise<IStatusResult | null> {
-    try {
-      return await getStatus(this.repository)
-    } catch (e) {
-      log.error('Failed to load repository status', e)
-      return null
-    }
   }
 
   /**

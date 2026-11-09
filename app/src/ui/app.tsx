@@ -33,10 +33,10 @@ import {
   Repository,
   getGitHubHtmlUrl,
   getNonForkGitHubRepository,
-  getNonGitHubUrl,
   getUpdateBranchStrategy,
   isRepositoryWithGitHubRepository,
 } from '../models/repository'
+import { getNonGitHubUrl } from '../lib/repository-remote-url'
 import { Branch } from '../models/branch'
 import {
   getDiffFontFamilyCssValue,
@@ -101,6 +101,8 @@ import type { IBYOKProvider } from '../lib/copilot/byok'
 import { getConflictResolutionModelDisplay } from '../lib/copilot/conflict-resolution-model'
 import { OpenWithExternalEditor } from './open-with-external-editor/open-with-external-editor'
 import { RepositorySettings } from './repository-settings'
+import { RepositoryAccountDialog } from './repository-account/repository-account-dialog'
+import { ConfirmAccountSignOut } from './repository-account/confirm-account-sign-out'
 import { AppError } from './app-error'
 import { MissingRepository } from './missing-repository'
 import { AddExistingRepository, CreateRepository } from './add-repository'
@@ -1438,7 +1440,7 @@ export class App extends React.Component<IAppProps, IAppState> {
     // But if they just dragged one, use the dialog so that they can initialize
     // it if needed.
     if (paths.length > 1) {
-      const addedRepositories = await dispatcher.addRepositories(paths, null)
+      const addedRepositories = await dispatcher.addRepositories(paths)
 
       if (addedRepositories.length > 0) {
         dispatcher.recordAddExistingRepository()
@@ -2023,6 +2025,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             selectedShell={this.state.selectedShell}
             selectedTheme={this.state.selectedTheme}
             selectedTabSize={this.state.selectedTabSize}
+            showChangedFileCount={this.state.showChangedFileCount}
             recentRepositoriesCount={this.state.recentRepositoriesCount}
             selectedDiffFontSize={this.state.selectedDiffFontSize}
             selectedDiffFontFamily={this.state.selectedDiffFontFamily}
@@ -2103,13 +2106,33 @@ export class App extends React.Component<IAppProps, IAppState> {
             onDismissed={onPopupDismissedFn}
           />
         )
+      case PopupType.RepositoryAccount:
+        return (
+          <RepositoryAccountDialog
+            key={`repository-account-${popup.repository.id}`}
+            repository={popup.repository}
+            accounts={popup.accounts ?? this.state.accounts}
+            dispatcher={this.props.dispatcher}
+            onComplete={popup.onComplete}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
+      case PopupType.ConfirmAccountSignOut:
+        return (
+          <ConfirmAccountSignOut
+            key="confirm-account-sign-out"
+            account={popup.account}
+            repositoryCount={popup.repositoryCount}
+            onComplete={popup.onComplete}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
       case PopupType.RepositorySettings: {
         const repository = popup.repository
         const state = this.props.repositoryStateManager.get(repository)
         const repositoryAccount = getAccountForRepository(
           this.state.accounts,
-          repository,
-          true
+          repository
         )
 
         return (
@@ -2132,8 +2155,6 @@ export class App extends React.Component<IAppProps, IAppState> {
             signInState={this.state.signInState}
             dispatcher={this.props.dispatcher}
             onDismissed={onPopupDismissedFn}
-            isCredentialHelperSignIn={popup.isCredentialHelperSignIn}
-            credentialHelperUrl={popup.credentialHelperUrl}
           />
         )
       case PopupType.AddRepository:
@@ -2165,6 +2186,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             dispatcher={this.props.dispatcher}
             selectedTab={this.state.selectedCloneRepositoryTab}
             onTabSelected={this.onCloneRepositoriesTabSelected}
+            selectedAccount={this.state.selectedCloneAccount}
             apiRepositories={this.state.apiRepositories}
             onRefreshRepositories={this.onRefreshRepositories}
             isTopMost={isTopMost}
@@ -2959,6 +2981,7 @@ export class App extends React.Component<IAppProps, IAppState> {
         return (
           <CICheckRunRerunDialog
             key="rerun-check-runs"
+            localRepository={popup.localRepository}
             checkRuns={popup.checkRuns}
             dispatcher={this.props.dispatcher}
             repository={popup.repository}
@@ -3823,7 +3846,11 @@ export class App extends React.Component<IAppProps, IAppState> {
         onOpenInExternalEditor={this.openInExternalEditor}
         externalEditorLabel={this.defaultExternalEditorLabel}
         shellLabel={useCustomShell ? undefined : selectedShell}
+        accounts={this.state.accounts}
+        onChangeRepositoryAccount={this.changeRepositoryAccount}
+        onShowRepositorySettings={this.showRepositorySettingsFor}
         dispatcher={this.props.dispatcher}
+        showChangedFileCount={this.state.showChangedFileCount}
         showBranchNameInRepoList={this.state.showBranchNameInRepoList}
         repositoryGroupIndentation={this.state.repositoryGroupIndentation}
         repositoryGroupHeaderStyle={this.state.repositoryGroupHeaderStyle}
@@ -3861,6 +3888,35 @@ export class App extends React.Component<IAppProps, IAppState> {
 
   private onRepositoryListSizeReset = () => {
     this.props.dispatcher.resetSidebarWidth()
+  }
+
+  private changeRepositoryAccount = async (
+    repository: Repository,
+    login: string
+  ) => {
+    try {
+      await this.props.dispatcher.updateRepositoryAccount(repository, login)
+    } catch (e) {
+      this.props.dispatcher.postError(e)
+    }
+  }
+
+  /**
+   * Show the settings for a repository that may not be selected, without
+   * changing the selection.
+   */
+  private showRepositorySettingsFor = async (repository: Repository) => {
+    const selected = this.state.selectedState?.repository
+    // The dialog reads the remote from the repository's state, which is only
+    // loaded once the repository has been refreshed.
+    if (!(selected instanceof Repository) || selected.id !== repository.id) {
+      await this.props.dispatcher.refreshRepository(repository)
+    }
+
+    this.props.dispatcher.showPopup({
+      type: PopupType.RepositorySettings,
+      repository,
+    })
   }
 
   private viewOnGitHub = (
@@ -4145,6 +4201,9 @@ export class App extends React.Component<IAppProps, IAppState> {
       onOpenInExternalEditor: this.openInExternalEditor,
       askForConfirmationOnRemoveRepository:
         this.state.askForConfirmationOnRepositoryRemoval,
+      accounts: this.state.accounts,
+      onChangeRepositoryAccount: this.changeRepositoryAccount,
+      onShowRepositorySettings: this.showRepositorySettingsFor,
       externalEditorLabel: this.getExternalEditorLabel(repository),
       onChangeRepositoryAlias: onChangeRepositoryAlias,
       onRemoveRepositoryAlias: onRemoveRepositoryAlias,

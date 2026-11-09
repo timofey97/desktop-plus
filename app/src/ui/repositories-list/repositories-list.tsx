@@ -44,6 +44,7 @@ import { IMatch, IMatches } from '../../lib/fuzzy-find'
 import { ILocalRepositoryState, Repository } from '../../models/repository'
 import { normalizePath } from '../../lib/helpers/path'
 import { FoldoutType } from '../../lib/app-state'
+import { Account } from '../../models/account'
 import { Dispatcher } from '../dispatcher'
 import { Button } from '../lib/button'
 import { Octicon, syncClockwise } from '../octicons'
@@ -126,7 +127,22 @@ interface IRepositoriesListProps {
   /** The text entered by the user to filter their repository list */
   readonly filterText: string
 
+  /** The signed-in accounts, used to offer repository account choices. */
+  readonly accounts: ReadonlyArray<Account>
+
+  /** Called when the repository should be assigned to another account. */
+  readonly onChangeRepositoryAccount: (
+    repository: Repository,
+    login: string
+  ) => void
+
+  /** Called when the repository's settings should be shown. */
+  readonly onShowRepositorySettings: (repository: Repository) => void
+
   readonly dispatcher: Dispatcher
+
+  /** Whether to show changed file counts in the repository list */
+  readonly showChangedFileCount: boolean
 
   /** Controls when to show the branch name next to each repository */
   readonly showBranchNameInRepoList: ShowBranchNameInRepoListSetting
@@ -574,6 +590,7 @@ export class RepositoriesList extends React.Component<
         matches={matches}
         aheadBehind={item.aheadBehind}
         changedFilesCount={item.changedFilesCount}
+        showChangedFileCount={this.props.showChangedFileCount}
         branchName={this.shouldShowBranchName(item) ? item.branchName : null}
         worktree={item.worktree}
       />
@@ -726,12 +743,7 @@ export class RepositoriesList extends React.Component<
     } else if (kind === 'other') {
       return displayName ?? 'Other'
     } else if (kind === 'dotcom') {
-      const accountLoginSuffix =
-        group.login && group.login !== group.owner.login
-          ? ` (${group.login})`
-          : ''
-      const defaultLabel = group.owner.login + accountLoginSuffix
-      return displayName ?? defaultLabel
+      return displayName ?? group.owner.login
     } else if (kind === 'recent') {
       return 'Recent'
     } else if (kind === 'pins') {
@@ -1244,6 +1256,9 @@ export class RepositoriesList extends React.Component<
       onOpenInExternalEditor: this.props.onOpenInExternalEditor,
       askForConfirmationOnRemoveRepository:
         this.props.askForConfirmationOnRemoveRepository,
+      accounts: this.props.accounts,
+      onChangeRepositoryAccount: this.props.onChangeRepositoryAccount,
+      onShowRepositorySettings: this.props.onShowRepositorySettings,
       externalEditorLabel: this.getExternalEditorLabel(item.repository),
       onChangeRepositoryAlias: this.onChangeRepositoryAlias,
       onRemoveRepositoryAlias: this.onRemoveRepositoryAlias,
@@ -1358,6 +1373,7 @@ export class RepositoriesList extends React.Component<
             filterText: this.props.filterText,
             localRepositoryStateLookup: this.props.localRepositoryStateLookup,
             showWorktreesInRepoList: this.props.showWorktreesInRepoList,
+            showChangedFileCount: this.props.showChangedFileCount,
             collapsedGroups: this.state.collapsedGroups,
             groupOrder: this.state.groupOrder,
             draggedGroup: this.state.draggedGroup,

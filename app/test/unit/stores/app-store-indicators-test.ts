@@ -79,7 +79,8 @@ describe('AppStore repository indicators', () => {
       stores.accountsStore,
       new AliveStore(stores.accountsStore),
       pullRequestCoordinator,
-      statsStore
+      statsStore,
+      stores.repositoriesStore
     )
     appStore = new AppStore(
       stores.gitHubUserStore,
@@ -311,8 +312,7 @@ describe('AppStore repository indicators', () => {
   it('keeps local repositories when a cloning repository is selected', () => {
     const selectedRepository = new CloningRepository(
       '/repositories/cloning',
-      'https://github.com/desktop/cloning.git',
-      null
+      'https://github.com/desktop/cloning.git'
     )
     const repositories = [
       new Repository('/repositories/local', selectedRepository.id, null, false),

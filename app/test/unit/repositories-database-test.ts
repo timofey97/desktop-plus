@@ -8,6 +8,44 @@ import {
 } from '../../src/lib/databases'
 
 describe('RepositoriesDatabase', () => {
+  it('migrates legacy metadata to an unassigned scope without trusting old permissions', async t => {
+    const name = 'AccountScopedRepositoriesMigration'
+    let db = new RepositoriesDatabase(name, 9)
+    await db.delete()
+    await db.open()
+    t.after(() => db.delete())
+    const id = await db.gitHubRepositories.add({
+      ownerID: 1,
+      name: 'repo',
+      private: false,
+      htmlURL: null,
+      cloneURL: null,
+      parentID: null,
+      lastPruneDate: null,
+      permissions: 'admin',
+    })
+    await db.protectedBranches.add({ repoId: id, name: 'main' })
+    db.close()
+    db = new RepositoriesDatabase(name)
+    await db.open()
+    const record = await db.gitHubRepositories.get(id)
+    assert.strictEqual(record?.accountLogin, '')
+    assert.strictEqual(record?.permissions, null)
+    assert.strictEqual(await db.protectedBranches.count(), 0)
+    assert.ok(record)
+    await db.gitHubRepositories.add({
+      ...record,
+      id: undefined,
+      accountLogin: 'alice',
+    })
+    await db.gitHubRepositories.add({
+      ...record,
+      id: undefined,
+      accountLogin: 'bob',
+    })
+    assert.strictEqual(await db.gitHubRepositories.count(), 3)
+  })
+
   it('migrates from version 2 to 4 by deleting duplicate GitHub repositories', async () => {
     const dbName = 'TestRepositoriesDatabase'
     let db = new RepositoriesDatabase(dbName, 2)
@@ -24,7 +62,6 @@ describe('RepositoriesDatabase', () => {
       lastPruneDate: null,
       permissions: 'write',
       issuesEnabled: true,
-      login: null,
     }
     const originalId = await db.gitHubRepositories.add({ ...gitHubRepo })
     const duplicateId = await db.gitHubRepositories.add({ ...gitHubRepo })
@@ -73,7 +110,6 @@ describe('RepositoriesDatabase', () => {
       lastPruneDate: null,
       permissions: 'write',
       issuesEnabled: true,
-      login: null,
     }
     const originalRepoB: IDatabaseGitHubRepository = {
       ownerID: ownerB,
@@ -85,7 +121,6 @@ describe('RepositoriesDatabase', () => {
       lastPruneDate: null,
       permissions: 'write',
       issuesEnabled: true,
-      login: null,
     }
 
     const repoAId = await db.gitHubRepositories.add(originalRepoA)

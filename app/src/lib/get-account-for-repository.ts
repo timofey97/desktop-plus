@@ -1,6 +1,5 @@
-import { Repository } from '../models/repository'
-import { Account } from '../models/account'
-import { getAccountForEndpoint } from './api'
+import { Repository, getRepositoryAccountIdentity } from '../models/repository'
+import { Account, isSameAccount } from '../models/account'
 import {
   enableCommitMessageGeneration,
   enableCopilotConflictResolution,
@@ -10,20 +9,10 @@ import {
 /** Get the authenticated account for the repository. */
 export function getAccountForRepository(
   accounts: ReadonlyArray<Account>,
-  repository: Repository,
-  strict: boolean = false
+  repository: Repository
 ): Account | null {
-  const gitHubRepository = repository.gitHubRepository
-  if (!gitHubRepository) {
-    return null
-  }
-
-  return getAccountForEndpoint(
-    accounts,
-    gitHubRepository.endpoint,
-    gitHubRepository.loginForApi,
-    strict
-  )
+  const identity = getRepositoryAccountIdentity(repository)
+  return accounts.find(account => isSameAccount(account, identity)) ?? null
 }
 
 /**

@@ -37,6 +37,8 @@ function renderAppearance(alwaysShowWorktreeList = false) {
     onPreferAbsoluteDatesChanged: () => {},
     alwaysShowWorktreeList,
     onAlwaysShowWorktreeListChanged: (value: boolean) => changes.push(value),
+    showChangedFileCount: false,
+    onShowChangedFileCountChange: () => {},
     recentRepositoriesCount: 10,
     onRecentRepositoriesCountChanged: () => {},
     selectedDiffFontSize: defaultDiffFontSize,
