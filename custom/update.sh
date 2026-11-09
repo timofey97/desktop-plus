@@ -18,6 +18,14 @@ notify() {
   osascript -e "display notification \"$1\" with title \"Desktop Plus\""
 }
 
+ask_to_update() {
+  osascript <<APPLESCRIPT 2>/dev/null || true
+activate
+display dialog "Готова новая сборка Desktop Plus ($1). Обновить сейчас? Приложение закроется и откроется снова." with title "Desktop Plus" buttons {"Позже", "Обновить"} default button "Обновить" giving up after 1800
+return button returned of result
+APPLESCRIPT
+}
+
 install_app() {
   local app="$1" label="$2"
   if is_running; then
@@ -106,14 +114,19 @@ if [ "$(cat "$state_dir/installed" 2>/dev/null)" = "$tag" ]; then
   exit 0
 fi
 
+reopen=0
 if [ "$mode" = "--auto" ] && is_running; then
-  if [ "$(cat "$state_dir/notified" 2>/dev/null)" != "$tag" ]; then
-    notify "Готова новая сборка $tag. Выйди из приложения (⌘Q), и она установится сама в течение часа."
-    mkdir -p "$state_dir"
-    echo "$tag" > "$state_dir/notified"
+  if [ "$(cat "$state_dir/notified" 2>/dev/null)" = "$tag" ]; then
+    echo "$(date '+%F %T') $tag is available, Desktop Plus is running, waiting."
+    exit 0
   fi
-  echo "$(date '+%F %T') $tag is available, Desktop Plus is running, waiting."
-  exit 0
+  mkdir -p "$state_dir"
+  echo "$tag" > "$state_dir/notified"
+  if [ "$(ask_to_update "$tag")" != "Обновить" ]; then
+    echo "$(date '+%F %T') $tag is available, postponed until Desktop Plus is closed."
+    exit 0
+  fi
+  reopen=1
 fi
 
 tmp=$(mktemp -d)
@@ -123,7 +136,7 @@ gh release download "$tag" --repo "$repo" --pattern '*.zip' --dir "$tmp"
 ditto -x -k "$tmp"/*.zip "$tmp/app"
 install_app "$tmp/app/Desktop Plus.app" "$tag"
 
-if [ "$mode" = "--auto" ]; then
+if [ "$mode" = "--auto" ] && [ "$reopen" = 0 ]; then
   notify "Установлена новая сборка $tag."
 else
   open "$installed"
