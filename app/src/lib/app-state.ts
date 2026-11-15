@@ -33,6 +33,8 @@ import {
 import { Author } from '../models/author'
 import { MergeTreeResult } from '../models/merge'
 import { ICommitMessage } from '../models/commit-message'
+import { CommitMode } from '../models/commit-mode'
+import { AssistedCommitRunState } from '../models/assisted-commit-run'
 import {
   IRevertProgress,
   Progress,
@@ -329,6 +331,12 @@ export interface IAppState {
 
   /** Whether lists of changed files are shown as a tree of folders */
   readonly fileTreeView: boolean
+
+  /**
+   * Whether the changed files of the selected commit(s) in the History tab
+   * are shown as a tree of folders
+   */
+  readonly historyFileTreeView: boolean
 
   /** Whether the list/tree and list/graph view mode switches are shown */
   readonly showViewModeSwitches: boolean
@@ -935,6 +943,18 @@ export interface IChangesState {
 
   /** The commit message for a work-in-progress commit in the changes view. */
   readonly commitMessage: ICommitMessage
+
+  /** The repository's preferred commit mode, even when assisted commits are unavailable. */
+  readonly commitMode: CommitMode
+
+  /** Shared per-repository opt-in for ordinary manual and assisted commits. */
+  readonly pushAfterCommit: boolean
+
+  /** The repository's awaited assisted run, independent of the selected repository and mounted UI. */
+  readonly assistedCommit: AssistedCommitRunState
+
+  /** A real callback may be offered only when the account, SDK, runtime, and preview gates pass. */
+  readonly assistedCommitAvailable: boolean
 
   /**
    * Whether or not to show a field for adding co-authors to
