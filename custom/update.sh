@@ -4,6 +4,7 @@ set -euo pipefail
 repo=timofey97/desktop-plus
 installed="/Applications/Desktop Plus.app"
 state_dir="$HOME/.local/state/desktop-plus-custom"
+cache_dir="$HOME/Library/Caches/desktop-plus-custom"
 agent_label=com.timofey97.desktop-plus-update
 agent_script="$HOME/.local/bin/desktop-plus-update"
 agent_plist="$HOME/Library/LaunchAgents/$agent_label.plist"
@@ -114,6 +115,21 @@ if [ "$(cat "$state_dir/installed" 2>/dev/null)" = "$tag" ]; then
   exit 0
 fi
 
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+zip="$cache_dir/$tag.zip"
+if [ ! -f "$zip" ]; then
+  echo "$(date '+%F %T') Downloading $tag..."
+  if ! gh release download "$tag" --repo "$repo" --pattern '*.zip' --dir "$tmp/download"; then
+    echo "$(date '+%F %T') Download failed."
+    [ "$mode" = "--auto" ] && exit 0
+    exit 1
+  fi
+  mkdir -p "$cache_dir"
+  find "$cache_dir" -name '*.zip' -delete
+  mv "$tmp"/download/*.zip "$zip"
+fi
+
 reopen=0
 if [ "$mode" = "--auto" ] && is_running; then
   if [ "$(cat "$state_dir/notified" 2>/dev/null)" = "$tag" ]; then
@@ -129,12 +145,9 @@ if [ "$mode" = "--auto" ] && is_running; then
   reopen=1
 fi
 
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-echo "Downloading $tag..."
-gh release download "$tag" --repo "$repo" --pattern '*.zip' --dir "$tmp"
-ditto -x -k "$tmp"/*.zip "$tmp/app"
+ditto -x -k "$zip" "$tmp/app"
 install_app "$tmp/app/Desktop Plus.app" "$tag"
+rm -f "$zip"
 
 if [ "$mode" = "--auto" ] && [ "$reopen" = 0 ]; then
   notify "Установлена новая сборка $tag."
