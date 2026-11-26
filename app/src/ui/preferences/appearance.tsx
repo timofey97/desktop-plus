@@ -17,6 +17,8 @@ import {
 } from '../../lib/stores/app-store'
 import { ShowBranchNameInRepoListSetting } from '../../models/show-branch-name-in-repo-list'
 import {
+  defaultRepositoryGroupHeaderStyle,
+  defaultRepositoryGroupIndentation,
   RepositoryGroupHeaderStyle,
   RepositoryGroupHeaderStyles,
   RepositoryGroupIndentation,
@@ -75,12 +77,12 @@ interface IAppearanceProps {
   readonly onShowBranchNameInRepoListChanged: (
     value: ShowBranchNameInRepoListSetting
   ) => void
-  readonly repositoryGroupIndentation: RepositoryGroupIndentation
-  readonly onRepositoryGroupIndentationChanged: (
+  readonly repositoryGroupIndentation?: RepositoryGroupIndentation
+  readonly onRepositoryGroupIndentationChanged?: (
     value: RepositoryGroupIndentation
   ) => void
-  readonly repositoryGroupHeaderStyle: RepositoryGroupHeaderStyle
-  readonly onRepositoryGroupHeaderStyleChanged: (
+  readonly repositoryGroupHeaderStyle?: RepositoryGroupHeaderStyle
+  readonly onRepositoryGroupHeaderStyleChanged?: (
     value: RepositoryGroupHeaderStyle
   ) => void
   readonly branchSortOrder: BranchSortOrder
@@ -450,7 +452,7 @@ export class Appearance extends React.Component<
       event.currentTarget.value
     )
     if (value !== undefined) {
-      this.props.onRepositoryGroupIndentationChanged(value)
+      this.props.onRepositoryGroupIndentationChanged?.(value)
     }
   }
 
@@ -462,7 +464,7 @@ export class Appearance extends React.Component<
       event.currentTarget.value
     )
     if (value !== undefined) {
-      this.props.onRepositoryGroupHeaderStyleChanged(value)
+      this.props.onRepositoryGroupHeaderStyleChanged?.(value)
     }
   }
 
@@ -542,7 +544,10 @@ export class Appearance extends React.Component<
         </Select>
         <Select
           label="Indentation of repositories in groups"
-          value={this.props.repositoryGroupIndentation}
+          value={
+            this.props.repositoryGroupIndentation ??
+            defaultRepositoryGroupIndentation
+          }
           onChange={this.onRepositoryGroupIndentationChanged}
         >
           <option value={RepositoryGroupIndentations.None}>None</option>
@@ -552,7 +557,10 @@ export class Appearance extends React.Component<
         </Select>
         <Select
           label="Group header style"
-          value={this.props.repositoryGroupHeaderStyle}
+          value={
+            this.props.repositoryGroupHeaderStyle ??
+            defaultRepositoryGroupHeaderStyle
+          }
           onChange={this.onRepositoryGroupHeaderStyleChanged}
         >
           <option value={RepositoryGroupHeaderStyles.Default}>Default</option>

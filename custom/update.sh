@@ -92,8 +92,8 @@ PLIST
   source "$HOME/.nvm/nvm.sh"
   nvm install >/dev/null
   nvm use >/dev/null
-  yarn install --frozen-lockfile
-  yarn build:prod
+  npm ci
+  npm run build:prod
   arch="$(uname -m)"
   [ "$arch" = "x86_64" ] && arch="x64"
   dirty=""

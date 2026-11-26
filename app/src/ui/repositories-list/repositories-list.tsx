@@ -65,6 +65,8 @@ import { assertNever } from '../../lib/fatal-error'
 import { IAheadBehind } from '../../models/branch'
 import { ShowBranchNameInRepoListSetting } from '../../models/show-branch-name-in-repo-list'
 import {
+  defaultRepositoryGroupHeaderStyle,
+  defaultRepositoryGroupIndentation,
   RepositoryGroupHeaderStyle,
   RepositoryGroupIndentation,
 } from '../../models/repository-group-appearance'
@@ -148,10 +150,10 @@ interface IRepositoriesListProps {
   readonly showBranchNameInRepoList: ShowBranchNameInRepoListSetting
 
   /** How far repositories are indented under their group header */
-  readonly repositoryGroupIndentation: RepositoryGroupIndentation
+  readonly repositoryGroupIndentation?: RepositoryGroupIndentation
 
   /** How group headers stand out from the repositories in the list */
-  readonly repositoryGroupHeaderStyle: RepositoryGroupHeaderStyle
+  readonly repositoryGroupHeaderStyle?: RepositoryGroupHeaderStyle
 
   /** Whether or not the worktrees dropdown should be shown in the toolbar */
   readonly showWorktrees: boolean
@@ -1364,8 +1366,14 @@ export class RepositoriesList extends React.Component<
 
     const className = classNames(
       'repository-list',
-      `group-indentation-${this.props.repositoryGroupIndentation}`,
-      `group-header-${this.props.repositoryGroupHeaderStyle}`
+      `group-indentation-${
+        this.props.repositoryGroupIndentation ??
+        defaultRepositoryGroupIndentation
+      }`,
+      `group-header-${
+        this.props.repositoryGroupHeaderStyle ??
+        defaultRepositoryGroupHeaderStyle
+      }`
     )
 
     return (

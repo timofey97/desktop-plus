@@ -10,10 +10,6 @@ import {
   getNumberFormatPreference,
 } from '../../../src/models/formatting-preferences'
 import { ShowBranchNameInRepoListSetting } from '../../../src/models/show-branch-name-in-repo-list'
-import {
-  defaultRepositoryGroupHeaderStyle,
-  defaultRepositoryGroupIndentation,
-} from '../../../src/models/repository-group-appearance'
 import { BranchSortOrder } from '../../../src/models/branch-sort-order'
 import {
   defaultDiffFontFamily,
@@ -57,10 +53,6 @@ function renderAppearance(alwaysShowWorktreeList = false) {
     onShowConventionalCommitBadgesChanged: () => {},
     showBranchNameInRepoList: ShowBranchNameInRepoListSetting.Never,
     onShowBranchNameInRepoListChanged: () => {},
-    repositoryGroupIndentation: defaultRepositoryGroupIndentation,
-    onRepositoryGroupIndentationChanged: () => {},
-    repositoryGroupHeaderStyle: defaultRepositoryGroupHeaderStyle,
-    onRepositoryGroupHeaderStyleChanged: () => {},
     branchSortOrder: BranchSortOrder.LastModified,
     onBranchSortOrderChanged: () => {},
   }
