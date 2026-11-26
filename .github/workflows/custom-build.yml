@@ -39,7 +39,7 @@ jobs:
           node-version: ${{ steps.node.outputs.version }}
           arch: arm64
       - name: Build production app
-        run: env -u GITHUB_ACTIONS yarn build:prod
+        run: env -u GITHUB_ACTIONS npm run build:prod
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
