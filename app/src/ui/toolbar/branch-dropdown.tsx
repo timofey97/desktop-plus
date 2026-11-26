@@ -33,7 +33,6 @@ import { isLocalOnlyBranch } from '../branches/group-branches'
 import { showContextualMenu } from '../../lib/menu-item'
 import { Emoji } from '../../lib/emoji'
 import { BranchSortOrder } from '../../models/branch-sort-order'
-import { enableResizingToolbarButtons } from '../../lib/feature-flag'
 import { WorktreeEntry } from '../../models/worktree'
 
 interface IBranchDropdownProps {
@@ -151,6 +150,10 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
       return
     }
 
+    if (this.props.showCIStatusPopover) {
+      this.closePopover()
+    }
+
     this.props.onDropDownStateChanged(state)
   }
 
@@ -226,36 +229,6 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
     const buttonClassName = classNames('branch-toolbar-button', 'nudge-arrow', {
       'nudge-arrow-up': this.props.shouldNudge,
     })
-
-    if (!enableResizingToolbarButtons()) {
-      return (
-        <>
-          <ToolbarDropdown
-            className="branch-button"
-            icon={icon}
-            iconClassName={iconClassName}
-            title={title}
-            description={description}
-            onContextMenu={this.onBranchToolbarButtonContextMenu}
-            tooltip={isOpen ? undefined : tooltip}
-            onDropdownStateChanged={this.onDropDownStateChanged}
-            dropdownContentRenderer={this.renderBranchFoldout}
-            dropdownState={currentState}
-            disabled={disabled}
-            showDisclosureArrow={canOpen}
-            progressValue={progressValue}
-            buttonClassName={buttonClassName}
-            onMouseEnter={this.onMouseEnter}
-            onlyShowTooltipWhenOverflowed={true}
-            isOverflowed={isDescriptionOverflowed}
-            enableFocusTrap={enableFocusTrap}
-          >
-            {this.renderPullRequestInfo()}
-          </ToolbarDropdown>
-          {this.props.showCIStatusPopover && this.renderPopover()}
-        </>
-      )
-    }
 
     // Properties to override the default foldout style for the branch dropdown.
     // The min width of the foldout is different from `branchDropdownWidth.min`
@@ -556,10 +529,13 @@ export class BranchDropdown extends React.Component<IBranchDropdownProps> {
   }
 
   private onBadgeClick = () => {
-    // The badge can't be clicked while the CI status popover is shown, because
-    // in that case the Popover component will recognize the "click outside"
-    // event and close the popover.
     this.props.dispatcher.closeFoldout(FoldoutType.Branch)
+
+    if (this.props.showCIStatusPopover) {
+      this.closePopover()
+      return
+    }
+
     this.openPopover()
   }
 

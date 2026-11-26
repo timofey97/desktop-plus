@@ -22,13 +22,11 @@ import {
 import { ManualConflictResolution } from '../../../models/manual-conflict-resolution'
 import { OkCancelButtonGroup } from '../../dialog/ok-cancel-button-group'
 import { DialogSuccess } from '../../dialog/success'
-import { enableCopilotConflictResolution } from '../../../lib/feature-flag'
-import { getAccountForCopilotConflictResolution } from '../../../lib/get-account-for-repository'
+import { getAccountForCopilot } from '../../../lib/get-account-for-repository'
 import { Account } from '../../../models/account'
 import { Octicon } from '../../octicons'
 import * as octicons from '../../octicons/octicons.generated'
 import { Button } from '../../lib/button'
-import { SystemDefaultProgramLabel } from '../../../models/editor-override'
 
 interface IConflictsDialogProps {
   readonly dispatcher: Dispatcher
@@ -175,7 +173,6 @@ export class ConflictsDialog extends React.Component<
     files: ReadonlyArray<WorkingDirectoryFileChange>
   ) {
     let isFirstUnmergedFile = true
-    const externalEditorName = this.getExternalEditorName()
     return (
       <ul className="unmerged-file-statuses">
         {files.map(f => {
@@ -185,7 +182,7 @@ export class ConflictsDialog extends React.Component<
             return renderUnmergedFile({
               path: f.path,
               status: f.status,
-              resolvedExternalEditor: externalEditorName,
+              resolvedExternalEditor: this.props.resolvedExternalEditor,
               openFileInExternalEditor: this.props.openFileInExternalEditor,
               repository: this.props.repository,
               dispatcher: this.props.dispatcher,
@@ -203,20 +200,6 @@ export class ConflictsDialog extends React.Component<
         })}
       </ul>
     )
-  }
-
-  private getExternalEditorName() {
-    const { repository, resolvedExternalEditor } = this.props
-    const repoEditor = repository.customEditorOverride
-    if (!repoEditor) {
-      return resolvedExternalEditor
-    }
-    if (repoEditor.useSystemDefaultProgram) {
-      return SystemDefaultProgramLabel
-    }
-    return repoEditor.useCustomEditor
-      ? 'External Editor'
-      : repoEditor.selectedExternalEditor
   }
 
   private renderContent(
@@ -279,7 +262,6 @@ export class ConflictsDialog extends React.Component<
    * Renders the "Resolve with Copilot" button when the feature is available.
    * Only shown when:
    * - The onResolveWithCopilot callback is provided (operation supports it)
-   * - The feature flag is enabled
    * - There is at least one signed-in account with Copilot for Desktop
    *   enabled (covers "no Copilot subscription" and "disabled by org policy")
    * - There are still conflicted files to resolve
@@ -293,9 +275,8 @@ export class ConflictsDialog extends React.Component<
 
     if (
       onResolveWithCopilot === undefined ||
-      !enableCopilotConflictResolution() ||
       conflictedFilesCount === 0 ||
-      getAccountForCopilotConflictResolution(accounts, repository) === undefined
+      getAccountForCopilot(accounts, repository) === undefined
     ) {
       return null
     }
